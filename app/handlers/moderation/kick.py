@@ -27,8 +27,6 @@ async def kick_func(message: Message, bot: Bot, command: CommandObject) -> Any:
         target = args[0]
 
         try:
-            # Импортируем функцию получения пользователя
-
             user_id, mention = await get_user_by_username_or_id(
                 bot, message.chat.id, target
             )
@@ -43,8 +41,6 @@ async def kick_func(message: Message, bot: Bot, command: CommandObject) -> Any:
             "❌ Ответьте на сообщение или укажите @username/ID пользователя!"
         )
         return
-
-    # Получаем причину (если есть)
     reason = (
         " ".join(command.args.split()[1:])
         if command and command.args and len(command.args.split()) > 1
@@ -52,10 +48,7 @@ async def kick_func(message: Message, bot: Bot, command: CommandObject) -> Any:
     )
 
     with suppress(TelegramBadRequest):
-        # Кикаем пользователя
         await bot.ban_chat_member(chat_id=message.chat.id, user_id=user_id)
-
-        # Сразу разбаниваем, чтобы он мог вернуться
         await bot.unban_chat_member(chat_id=message.chat.id, user_id=user_id)
 
         await message.answer(
