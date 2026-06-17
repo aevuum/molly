@@ -8,7 +8,6 @@ from app.handlers.moderation.mute import mute_router
 from app.handlers.moderation.kick import kick_router
 from config_reader import config
 
-# Настройка логирования
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
