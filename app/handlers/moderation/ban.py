@@ -26,10 +26,9 @@ async def ban_func(message: Message, bot: Bot, command: CommandObject) -> Any:
             await message.answer("❌ Укажите @username или ID пользователя!")
             return
 
-        target = args[0]  # Это будет "@panaceyya_dev" или "123456789"
+        target = args[0]
 
         try:
-            # Правильный вызов функции с тремя аргументами
             user_id, mention = await get_user_by_username_or_id(
                 bot, message.chat.id, target
             )
@@ -44,10 +43,6 @@ async def ban_func(message: Message, bot: Bot, command: CommandObject) -> Any:
             "❌ Ответьте на сообщение или укажите @username/ID пользователя!"
         )
         return
-
-    # ... остальной код
-
-    # Парсим время из аргументов
     time_args = (
         command.args.split(maxsplit=1)[1]
         if command.args and len(command.args.split()) > 1
