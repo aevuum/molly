@@ -7,6 +7,7 @@ from app.handlers.moderation.unban import unban_router
 from app.handlers.moderation.mute import mute_router
 from app.handlers.moderation.kick import kick_router
 from config_reader import config
+from app.database.database import close_database
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -23,4 +24,8 @@ async def main():
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    finally:
+        close_database()    
+    
