@@ -6,6 +6,7 @@ from aiogram import Bot, Dispatcher
 from app.database.database import close_database
 from app.handlers.auto_channel_reply import channel
 from app.handlers.moderation.router import moderation_router
+from app.handlers.fun.sixseven import sixseven_router
 from config_reader import config
 
 
@@ -23,6 +24,7 @@ async def main():
     dp.include_routers(
         moderation_router,
         channel,
+        sixseven_router
     )
 
     await bot.delete_webhook(
