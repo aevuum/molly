@@ -6,6 +6,7 @@ from aiogram import Bot, Dispatcher
 from app.database.database import close_database
 from app.handlers.auto_channel_reply import channel
 from app.handlers.moderation.router import moderation_router
+from app.middlewares.welcome import WelcomeMiddleware
 from config_reader import config
 from app.handlers.utils.welcome import welcome_router
 
@@ -20,7 +21,11 @@ bot = Bot(
 dp = Dispatcher()
 
 
+
 async def main():
+    dp.message.middleware(
+        WelcomeMiddleware()
+    )
     dp.include_routers(
         moderation_router,
         channel,

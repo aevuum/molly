@@ -18,7 +18,7 @@ if alembic_config.config_file_name is not None:
 
 alembic_config.set_main_option(
     "sqlalchemy.url",
-    config.database_url.get_secret_value(),
+    config.database_url,
 )
 
 target_metadata = Base.metadata

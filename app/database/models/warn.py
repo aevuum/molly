@@ -3,7 +3,7 @@ from datetime import datetime
 from sqlalchemy import BigInteger, Boolean, DateTime, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.database.models import Base
+from app.database.models.base import Base
 
 
 class Warn(Base):
