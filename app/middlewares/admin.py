@@ -28,7 +28,7 @@ class AdminMiddleware(BaseMiddleware):
             ChatMemberStatus.CREATOR,
         }:
             await event.answer(
-                "❌ У вас нет прав администратора."
+                "💜❌ У вас нет прав администратора."
             )
             return
 
@@ -65,7 +65,7 @@ class AdminMiddleware(BaseMiddleware):
                 ChatMemberStatus.CREATOR,
             }:
                 await event.answer(
-                    "❌ Невозможно применить команду на администраторе."
+                    "💜❌ Невозможно применить команду на администраторе."
                 )
                 return
 
