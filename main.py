@@ -8,6 +8,7 @@ from app.handlers.auto_channel_reply import channel
 from app.handlers.moderation.router import moderation_router
 from app.handlers.fun.sixseven import sixseven_router
 from config_reader import config
+from app.handlers.utils.welcome import welcome_router
 
 
 logging.basicConfig(level=logging.INFO)
@@ -24,7 +25,7 @@ async def main():
     dp.include_routers(
         moderation_router,
         channel,
-        sixseven_router
+        welcome_router
     )
 
     await bot.delete_webhook(

@@ -18,12 +18,12 @@ class AdminMiddleware(BaseMiddleware):
 
         bot: Bot = data["bot"]
 
-        member = await bot.get_chat_member(
+        moderator = await bot.get_chat_member(
             chat_id=event.chat.id,
             user_id=event.from_user.id,
         )
 
-        if member.status not in {
+        if moderator.status not in {
             ChatMemberStatus.ADMINISTRATOR,
             ChatMemberStatus.CREATOR,
         }:
@@ -31,5 +31,42 @@ class AdminMiddleware(BaseMiddleware):
                 "❌ У вас нет прав администратора."
             )
             return
+
+        target_id = None
+
+        if event.reply_to_message:
+            if event.reply_to_message.from_user:
+                target_id = event.reply_to_message.from_user.id
+
+        elif event.text:
+            parts = event.text.split()
+
+            if len(parts) > 1:
+                target = parts[1]
+
+                if target.isdigit():
+                    target_id = int(target)
+
+                elif target.startswith("@"):
+                    try:
+                        target_user = await bot.get_chat(target)
+                        target_id = target_user.id
+                    except Exception:
+                        pass
+
+        if target_id is not None:
+            target = await bot.get_chat_member(
+                chat_id=event.chat.id,
+                user_id=target_id,
+            )
+
+            if target.status in {
+                ChatMemberStatus.ADMINISTRATOR,
+                ChatMemberStatus.CREATOR,
+            }:
+                await event.answer(
+                    "❌ Невозможно применить команду на администраторе."
+                )
+                return
 
         return await handler(event, data)
