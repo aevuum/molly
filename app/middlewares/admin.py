@@ -3,7 +3,19 @@ from typing import Any
 
 from aiogram import BaseMiddleware, Bot
 from aiogram.enums import ChatMemberStatus
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.types import Message
+
+
+MODERATION_COMMANDS = {
+    "ban",
+    "unban",
+    "mute",
+    "unmute",
+    "kick",
+    "warn",
+    "unwarn",
+}
 
 
 class AdminMiddleware(BaseMiddleware):
@@ -13,8 +25,15 @@ class AdminMiddleware(BaseMiddleware):
         event: Message,
         data: dict[str, Any],
     ) -> Any:
+        command_name = None
+        if event.text and event.text.startswith("/"):
+            command_name = event.text.split()[0][1:].split("@", 1)[0].lower()
+
+        if command_name not in MODERATION_COMMANDS:
+            return await handler(event, data)
+
         if not event.from_user:
-            return
+            return await handler(event, data)
 
         bot: Bot = data["bot"]
 
@@ -27,17 +46,13 @@ class AdminMiddleware(BaseMiddleware):
             ChatMemberStatus.ADMINISTRATOR,
             ChatMemberStatus.CREATOR,
         }:
-            await event.answer(
-                "💜❌ У вас нет прав администратора."
-            )
+            await event.answer("💜❌ У вас нет прав администратора.")
             return
 
         target_id = None
 
-        if event.reply_to_message:
-            if event.reply_to_message.from_user:
-                target_id = event.reply_to_message.from_user.id
-
+        if event.reply_to_message and event.reply_to_message.from_user:
+            target_id = event.reply_to_message.from_user.id
         elif event.text:
             parts = event.text.split()
 
@@ -46,12 +61,11 @@ class AdminMiddleware(BaseMiddleware):
 
                 if target.isdigit():
                     target_id = int(target)
-
                 elif target.startswith("@"):
                     try:
                         target_user = await bot.get_chat(target)
                         target_id = target_user.id
-                    except Exception:
+                    except TelegramBadRequest:
                         pass
 
         if target_id is not None:
@@ -69,4 +83,15 @@ class AdminMiddleware(BaseMiddleware):
                 )
                 return
 
-        return await handler(event, data)
+        result = await handler(event, data)
+
+        if (
+            command_name in MODERATION_COMMANDS
+            and event.reply_to_message is not None
+        ):
+            try:
+                await event.reply_to_message.delete()
+            except TelegramBadRequest:
+                pass
+
+        return result

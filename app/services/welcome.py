@@ -28,6 +28,10 @@ EMOJIS = [
     "⚽", "🏀", "🏈", "⚾", "🎾", "🏆", "🎮", "🎯",
 ]
 
+# Только эта группа используется для капчи.
+# Это linked discussion group канала.
+VERIFICATION_CHAT_ID = -1002181992075
+
 
 class WelcomeService:
 
@@ -53,6 +57,9 @@ class WelcomeService:
         user_id: int,
     ) -> None:
 
+        if chat_id != VERIFICATION_CHAT_ID:
+            return
+
         async with async_session_factory() as session:
             result = await session.execute(
                 select(WelcomeVerification).where(
@@ -63,24 +70,21 @@ class WelcomeService:
 
             verification = result.scalar_one_or_none()
 
+            now = datetime.now()
+
             if verification:
                 verification.verified = False
                 verification.correct_emoji = None
                 verification.message_id = None
-                verification.expires_at = (
-                    datetime.now()
-                    + timedelta(seconds=30)
-                )
+                verification.created_at = now
+                verification.expires_at = now + timedelta(seconds=30)
             else:
                 verification = WelcomeVerification(
                     chat_id=chat_id,
                     user_id=user_id,
                     verified=False,
-                    created_at=datetime.now(),
-                    expires_at=(
-                        datetime.now()
-                        + timedelta(seconds=30)
-                    ),
+                    created_at=now,
+                    expires_at=now + timedelta(seconds=30),
                 )
 
                 session.add(verification)
@@ -93,6 +97,9 @@ class WelcomeService:
         chat_id: int,
         user_id: int,
     ) -> None:
+
+        if chat_id != VERIFICATION_CHAT_ID:
+            return
 
         await bot.restrict_chat_member(
             chat_id=chat_id,
@@ -117,6 +124,9 @@ class WelcomeService:
         chat_id: int,
         user_id: int,
     ) -> None:
+
+        if chat_id != VERIFICATION_CHAT_ID:
+            return
 
         await bot.restrict_chat_member(
             chat_id=chat_id,
@@ -143,12 +153,15 @@ class WelcomeService:
         first_name: str,
     ) -> None:
 
+        # Никогда не создаём капчу в канале или любом другом чате.
+        if chat_id != VERIFICATION_CHAT_ID:
+            return
 
         chat = await bot.get_chat(chat_id)
 
         if chat.type not in {"group", "supergroup"}:
-          return
-        
+            return
+
         emojis = random.sample(EMOJIS, 4)
         correct_emoji = random.choice(emojis)
 
@@ -157,9 +170,7 @@ class WelcomeService:
                 [
                     InlineKeyboardButton(
                         text=emoji,
-                        callback_data=(
-                            f"welcome:{user_id}:{emoji}"
-                        ),
+                        callback_data=f"welcome:{user_id}:{emoji}",
                     )
                     for emoji in emojis
                 ]
@@ -200,10 +211,7 @@ class WelcomeService:
 
             verification.correct_emoji = correct_emoji
             verification.message_id = message.message_id
-            verification.expires_at = (
-                datetime.now()
-                + timedelta(seconds=30)
-            )
+            verification.expires_at = datetime.now() + timedelta(seconds=30)
 
             await session.commit()
 
@@ -223,6 +231,9 @@ class WelcomeService:
         user_id: int,
         emoji: str,
     ) -> bool:
+
+        if chat_id != VERIFICATION_CHAT_ID:
+            return False
 
         async with async_session_factory() as session:
             result = await session.execute(
@@ -246,6 +257,8 @@ class WelcomeService:
 
             verification.verified = True
 
+            message_id = verification.message_id
+
             await session.commit()
 
         await WelcomeService.restore_user(
@@ -254,13 +267,14 @@ class WelcomeService:
             user_id=user_id,
         )
 
-        try:
-            await bot.delete_message(
-                chat_id=chat_id,
-                message_id=verification.message_id,
-            )
-        except TelegramBadRequest:
-            pass
+        if message_id is not None:
+            try:
+                await bot.delete_message(
+                    chat_id=chat_id,
+                    message_id=message_id,
+                )
+            except TelegramBadRequest:
+                pass
 
         return True
 
@@ -271,6 +285,9 @@ class WelcomeService:
         user_id: int,
         message_id: int,
     ) -> None:
+
+        if chat_id != VERIFICATION_CHAT_ID:
+            return
 
         await asyncio.sleep(30)
 
@@ -311,10 +328,7 @@ class WelcomeService:
             await bot.edit_message_text(
                 chat_id=chat_id,
                 message_id=message_id,
-                text=(
-                    "❌ Пользователь не прошёл "
-                    "проверку за 30 секунд."
-                ),
+                text="❌ Пользователь не прошёл проверку за 30 секунд.",
             )
         except TelegramBadRequest:
             pass

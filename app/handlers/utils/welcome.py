@@ -1,7 +1,7 @@
 from aiogram import Bot, F, Router
 from aiogram.types import CallbackQuery, ChatMemberUpdated
 
-from app.services.welcome import WelcomeService
+from app.services.welcome import WelcomeService, VERIFICATION_CHAT_ID
 
 
 welcome_router = Router()
@@ -12,7 +12,13 @@ welcome_router = Router()
 )
 async def user_joined(
     event: ChatMemberUpdated,
+    bot: Bot,
 ) -> None:
+
+    # Капча работает только в linked discussion group.
+    # Даже если бот также добавлен в сам канал, там ничего не происходит.
+    if event.chat.id != VERIFICATION_CHAT_ID:
+        return
 
     if event.chat.type not in {"group", "supergroup"}:
         return
@@ -27,6 +33,14 @@ async def user_joined(
         user_id=user.id,
     )
 
+    # Отправляем капчу сразу после входа, а не ждём первого сообщения.
+    await WelcomeService.create_verification(
+        bot=bot,
+        chat_id=event.chat.id,
+        user_id=user.id,
+        first_name=user.first_name,
+    )
+
 
 @welcome_router.callback_query(
     F.data.startswith("welcome:")
@@ -36,20 +50,21 @@ async def verify_welcome(
     bot: Bot,
 ) -> None:
 
-    if callback.message.chat.type not in {"group", "supergroup"}:
-      await callback.answer()
-      return
-
     if not callback.message:
-      return
+        return
+
+    if callback.message.chat.id != VERIFICATION_CHAT_ID:
+        await callback.answer()
+        return
+
+    if callback.message.chat.type not in {"group", "supergroup"}:
+        await callback.answer()
+        return
 
     if not callback.data:
         return
 
-    _, user_id_string, emoji = callback.data.split(
-        ":",
-        2,
-    )
+    _, user_id_string, emoji = callback.data.split(":", 2)
 
     user_id = int(user_id_string)
 
@@ -58,9 +73,6 @@ async def verify_welcome(
             "❌ Эта проверка предназначена не для вас.",
             show_alert=True,
         )
-        return
-
-    if not callback.message:
         return
 
     success = await WelcomeService.verify_user(
@@ -77,9 +89,7 @@ async def verify_welcome(
         )
         return
 
-    await callback.answer(
-        "✅ Проверка пройдена!"
-    )
+    await callback.answer("✅ Проверка пройдена!")
 
     try:
         await callback.message.edit_text(
