@@ -1,4 +1,4 @@
-from collections.abc import Awaitable, Callable
+from collections.abc import Callable
 from typing import Any
 
 from aiogram import BaseMiddleware, Bot
@@ -23,10 +23,10 @@ class WelcomeMiddleware(BaseMiddleware):
         if event.chat.type not in {"group", "supergroup"}:
             return await handler(event, data)
 
-        if not event.from_user:
+        if event.chat.id != WelcomeService.VERIFICATION_CHAT_ID:
             return await handler(event, data)
 
-        if event.from_user.is_bot:
+        if not event.from_user or event.from_user.is_bot:
             return await handler(event, data)
 
         bot: Bot = data["bot"]
@@ -37,7 +37,24 @@ class WelcomeMiddleware(BaseMiddleware):
         )
 
         if verification is None:
-            return await handler(event, data)
+            try:
+                await event.delete()
+            except TelegramBadRequest:
+                pass
+
+            await WelcomeService.register_user(
+                chat_id=event.chat.id,
+                user_id=event.from_user.id,
+            )
+
+            await WelcomeService.create_verification(
+                bot=bot,
+                chat_id=event.chat.id,
+                user_id=event.from_user.id,
+                first_name=event.from_user.first_name,
+            )
+
+            return
 
         if verification.verified:
             return await handler(event, data)

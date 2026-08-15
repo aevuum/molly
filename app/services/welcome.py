@@ -1,6 +1,6 @@
 import asyncio
 import random
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from aiogram import Bot
 from aiogram.exceptions import TelegramBadRequest
@@ -28,18 +28,23 @@ EMOJIS = [
     "⚽", "🏀", "🏈", "⚾", "🎾", "🏆", "🎮", "🎯",
 ]
 
-# Только эта группа используется для капчи.
-# Это linked discussion group канала.
-VERIFICATION_CHAT_ID = -1002181992075
-
 
 class WelcomeService:
+
+    VERIFICATION_CHAT_ID = -1002181992075
+
+    @staticmethod
+    def _now() -> datetime:
+        return datetime.now(timezone.utc)
 
     @staticmethod
     async def get_verification(
         chat_id: int,
         user_id: int,
     ) -> WelcomeVerification | None:
+
+        if chat_id != WelcomeService.VERIFICATION_CHAT_ID:
+            return None
 
         async with async_session_factory() as session:
             result = await session.execute(
@@ -57,7 +62,7 @@ class WelcomeService:
         user_id: int,
     ) -> None:
 
-        if chat_id != VERIFICATION_CHAT_ID:
+        if chat_id != WelcomeService.VERIFICATION_CHAT_ID:
             return
 
         async with async_session_factory() as session:
@@ -70,7 +75,7 @@ class WelcomeService:
 
             verification = result.scalar_one_or_none()
 
-            now = datetime.now()
+            now = WelcomeService._now()
 
             if verification:
                 verification.verified = False
@@ -98,7 +103,7 @@ class WelcomeService:
         user_id: int,
     ) -> None:
 
-        if chat_id != VERIFICATION_CHAT_ID:
+        if chat_id != WelcomeService.VERIFICATION_CHAT_ID:
             return
 
         await bot.restrict_chat_member(
@@ -125,7 +130,7 @@ class WelcomeService:
         user_id: int,
     ) -> None:
 
-        if chat_id != VERIFICATION_CHAT_ID:
+        if chat_id != WelcomeService.VERIFICATION_CHAT_ID:
             return
 
         await bot.restrict_chat_member(
@@ -153,8 +158,7 @@ class WelcomeService:
         first_name: str,
     ) -> None:
 
-        # Никогда не создаём капчу в канале или любом другом чате.
-        if chat_id != VERIFICATION_CHAT_ID:
+        if chat_id != WelcomeService.VERIFICATION_CHAT_ID:
             return
 
         chat = await bot.get_chat(chat_id)
@@ -211,7 +215,7 @@ class WelcomeService:
 
             verification.correct_emoji = correct_emoji
             verification.message_id = message.message_id
-            verification.expires_at = datetime.now() + timedelta(seconds=30)
+            verification.expires_at = WelcomeService._now() + timedelta(seconds=30)
 
             await session.commit()
 
@@ -232,7 +236,7 @@ class WelcomeService:
         emoji: str,
     ) -> bool:
 
-        if chat_id != VERIFICATION_CHAT_ID:
+        if chat_id != WelcomeService.VERIFICATION_CHAT_ID:
             return False
 
         async with async_session_factory() as session:
@@ -249,7 +253,7 @@ class WelcomeService:
             if verification is None:
                 return False
 
-            if verification.expires_at <= datetime.now():
+            if verification.expires_at <= WelcomeService._now():
                 return False
 
             if verification.correct_emoji != emoji:
@@ -286,7 +290,7 @@ class WelcomeService:
         message_id: int,
     ) -> None:
 
-        if chat_id != VERIFICATION_CHAT_ID:
+        if chat_id != WelcomeService.VERIFICATION_CHAT_ID:
             return
 
         await asyncio.sleep(30)
@@ -305,7 +309,7 @@ class WelcomeService:
             if verification is None:
                 return
 
-            if verification.expires_at > datetime.now():
+            if verification.expires_at > WelcomeService._now():
                 return
 
             await session.delete(verification)
